@@ -108,20 +108,38 @@ public class ToWiring extends Visitor<StringBuffer> {
 
 	@Override
 	public void visit(SignalTransition transition) {
-		if(context.get("pass") == PASS.ONE) {
-			return;
-		}
-		if(context.get("pass") == PASS.TWO) {
-			String sensorName = transition.getSensor().getName();
-			w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-					sensorName, sensorName));
-			w(String.format("\t\t\tif( digitalRead(%d) == %s && %sBounceGuard) {\n",
-					transition.getSensor().getPin(), transition.getValue(), sensorName));
-			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
-			w("\t\t\t\tcurrentState = " + transition.getNext().getName() + ";\n");
-			w("\t\t\t}\n");
-			return;
-		}
+			if (context.get("pass") == PASS.ONE) {return;}
+			if (context.get("pass") == PASS.TWO) {
+				// Gérer les multiples conditions
+				StringBuilder conditionLogic = new StringBuilder();
+
+				for (SignalTransition.Condition condition : transition.getConditions()) {
+					String sensorName = condition.getSensor().getName();
+					String signalValue = condition.getValue().toString();
+
+					// Ajouter le code pour gérer le debounce de chaque capteur
+					w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+							sensorName, sensorName));
+
+					// Construire la logique conditionnelle pour ce capteur
+					if (conditionLogic.length() > 0) {
+						conditionLogic.append(" && ");
+					}
+					conditionLogic.append(String.format("digitalRead(%d) == %s && %sBounceGuard",
+							condition.getSensor().getPin(), signalValue, sensorName));
+				}
+
+				// Générer le bloc conditionnel combiné
+				w(String.format("\t\t\tif (%s) {\n", conditionLogic.toString()));
+				for (SignalTransition.Condition condition : transition.getConditions()) {
+					String sensorName = condition.getSensor().getName();
+					w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
+				}
+
+				// Transitionner vers l'état suivant
+				w(String.format("\t\t\t\tcurrentState = %s;\n", transition.getNext().getName()));
+				w("\t\t\t}\n");
+			}
 	}
 
 	@Override

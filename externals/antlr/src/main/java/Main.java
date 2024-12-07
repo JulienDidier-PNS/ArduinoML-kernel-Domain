@@ -50,7 +50,7 @@ public class Main {
     }
 
     private static void exportToCode(App theApp) {
-        Visitor codeGenerator = new ToWiring();
+        Visitor<StringBuffer> codeGenerator = new ToWiring();
         theApp.accept(codeGenerator);
         System.out.println(codeGenerator.getResult());
     }

@@ -1,18 +1,18 @@
 package io.github.mosser.arduinoml.externals.antlr;
 
-import io.github.mosser.arduinoml.externals.antlr.grammar.*;
-
-
+import io.github.mosser.arduinoml.externals.antlr.grammar.ArduinomlBaseListener;
+import io.github.mosser.arduinoml.externals.antlr.grammar.ArduinomlParser;
 import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.Action;
 import io.github.mosser.arduinoml.kernel.behavioral.SignalTransition;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
-import io.github.mosser.arduinoml.kernel.behavioral.Transition;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ModelBuilder extends ArduinomlBaseListener {
@@ -38,13 +38,19 @@ public class ModelBuilder extends ArduinomlBaseListener {
     private Map<String, State>    states  = new HashMap<>();
     private Map<String, Binding>  bindings  = new HashMap<>();
 
-    private class Binding { // used to support state resolution for transitions
-        String to; // name of the next state, as its instance might not have been compiled yet
+    private State currentState = null;
+
+    private static class Condition {
         Sensor trigger;
         SIGNAL value;
     }
 
-    private State currentState = null;
+    private static class Binding {
+        String to; // Nom de l'état suivant
+        List<Condition> conditions = new ArrayList<>();
+    }
+
+
 
     /**************************
      ** Listening mechanisms **
@@ -56,31 +62,59 @@ public class ModelBuilder extends ArduinomlBaseListener {
         theApp = new App();
     }
 
-    @Override public void exitRoot(ArduinomlParser.RootContext ctx) {
-        // Resolving states in transitions
-        bindings.forEach((key, binding) ->  {
+    @Override
+    public void exitRoot(ArduinomlParser.RootContext ctx) {
+        bindings.forEach((key, binding) -> {
+            if (!states.containsKey(binding.to)) {
+                throw new RuntimeException("Transition in state '" + key + "' points to an undefined state: " + binding.to);
+            }
+
             SignalTransition t = new SignalTransition();
-            t.setSensor(binding.trigger);
-            t.setValue(binding.value);
+
+            for (Condition condition : binding.conditions) {
+                if (condition.trigger == null) {
+                    throw new RuntimeException("Transition in state '" + key + "' uses an undefined sensor.");
+                }
+                t.addCondition(condition.trigger, condition.value);
+            }
             t.setNext(states.get(binding.to));
             states.get(key).setTransition(t);
         });
         this.built = true;
     }
 
+
+
     @Override
     public void enterDeclaration(ArduinomlParser.DeclarationContext ctx) {
         theApp.setName(ctx.name.getText());
     }
 
+    private void validatePort(int port) {
+        if (port < 1 || port > 12) {
+            throw new RuntimeException("Invalid port number: " + port + ". Must be between 1 and 12.");
+        }
+    }
+
+    private void validateIdentifier(String name) {
+        if (!name.matches("[a-z][a-zA-Z]+")) {
+            throw new RuntimeException("Invalid identifier: " + name + ". Must start with a lowercase letter.");
+        }
+    }
+
     @Override
     public void enterSensor(ArduinomlParser.SensorContext ctx) {
+        String sensorName = ctx.location().id.getText();
+        validateIdentifier(sensorName);
+        int port = Integer.parseInt(ctx.location().port.getText());
+        validatePort(port);
         Sensor sensor = new Sensor();
         sensor.setName(ctx.location().id.getText());
         sensor.setPin(Integer.parseInt(ctx.location().port.getText()));
         this.theApp.getBricks().add(sensor);
         sensors.put(sensor.getName(), sensor);
     }
+
 
     @Override
     public void enterActuator(ArduinomlParser.ActuatorContext ctx) {
@@ -105,21 +139,39 @@ public class ModelBuilder extends ArduinomlBaseListener {
         this.currentState = null;
     }
 
+    private Actuator getActuator(String name) {
+        Actuator actuator = actuators.get(name);
+        if (actuator == null) {
+            throw new RuntimeException("Undefined actuator: " + name);
+        }
+        return actuator;
+    }
+
     @Override
     public void enterAction(ArduinomlParser.ActionContext ctx) {
         Action action = new Action();
-        action.setActuator(actuators.get(ctx.receiver.getText()));
+        action.setActuator(getActuator(ctx.receiver.getText()));
         action.setValue(SIGNAL.valueOf(ctx.value.getText()));
         currentState.getActions().add(action);
     }
 
     @Override
     public void enterTransition(ArduinomlParser.TransitionContext ctx) {
-        // Creating a placeholder as the next state might not have been compiled yet.
         Binding toBeResolvedLater = new Binding();
-        toBeResolvedLater.to      = ctx.next.getText();
-        toBeResolvedLater.trigger = sensors.get(ctx.trigger.getText());
-        toBeResolvedLater.value   = SIGNAL.valueOf(ctx.value.getText());
+        toBeResolvedLater.to = ctx.next.getText();
+
+        System.out.println("Transition to " + toBeResolvedLater.to);
+        System.out.println("Conditions: " + ctx.conditions().condition().size());
+
+        for (ArduinomlParser.ConditionContext conditionCtx : ctx.conditions().condition()) {
+            String sensorName = conditionCtx.receiver.getText();
+            Sensor sensor = sensors.get(sensorName);
+
+            Condition condition = new Condition();
+            condition.trigger = sensor;
+            condition.value = SIGNAL.valueOf(conditionCtx.value.getText());
+            toBeResolvedLater.conditions.add(condition);
+        }
         bindings.put(currentState.getName(), toBeResolvedLater);
     }
 
