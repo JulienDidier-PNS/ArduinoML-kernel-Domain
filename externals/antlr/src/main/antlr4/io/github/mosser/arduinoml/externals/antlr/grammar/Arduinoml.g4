@@ -12,7 +12,7 @@ declaration     :   'application' name=IDENTIFIER;
 bricks          :   (sensor|actuator)+;
     sensor      :   'sensor'   location ;
     actuator    :   'actuator' location ;
-    location    :   id=IDENTIFIER ':' port=PORT_NUMBER;
+    location    :   id=IDENTIFIER;
 
 states          :   state+;
     state       :   initial? name=IDENTIFIER '{'  action+ transition '}';
@@ -26,7 +26,6 @@ states          :   state+;
  ** Lexer rules **
  *****************/
 
-PORT_NUMBER     :   [1-9] | '10' | '11' | '12';
 IDENTIFIER      :   LOWERCASE (LOWERCASE|UPPERCASE)+;
 SIGNAL          :   'HIGH' | 'LOW';
 OPERATOR        :   'AND' | 'LOW';

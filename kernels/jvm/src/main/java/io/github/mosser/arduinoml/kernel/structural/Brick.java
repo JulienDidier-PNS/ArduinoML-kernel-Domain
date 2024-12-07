@@ -6,7 +6,7 @@ import io.github.mosser.arduinoml.kernel.generator.Visitable;
 public abstract class Brick implements NamedElement, Visitable {
 
 	private String name;
-	private int pin;
+	private int pin = -1;
 
 	public int getPin() {
 		return pin;

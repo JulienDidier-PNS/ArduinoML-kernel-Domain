@@ -4,6 +4,10 @@ import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.*;
 import io.github.mosser.arduinoml.kernel.structural.*;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.HashMap;
+
 /**
  * Quick and dirty visitor to support the generation of Wiring code
  */
@@ -37,6 +41,16 @@ public class ToWiring extends Visitor<StringBuffer> {
 		w("};\n");
 		if (app.getInitial() != null) {
 			w("STATE currentState = " + app.getInitial().getName()+";\n");
+		}
+
+		// Initialisation de l'allocation des broches
+		PinAllocator allocator = new PinAllocator();
+
+		for (Brick brick : app.getBricks()) {
+			if (brick.getPin() == -1) { // Vérifie si aucune broche n'est attribuée
+				int allocatedPin = allocator.allocatePin(brick);
+				brick.setPin(allocatedPin);
+			}
 		}
 
 		for(Brick brick: app.getBricks()){

@@ -6,6 +6,7 @@ import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.Action;
 import io.github.mosser.arduinoml.kernel.behavioral.SignalTransition;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
+import io.github.mosser.arduinoml.kernel.generator.PinAllocator;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
@@ -37,6 +38,8 @@ public class ModelBuilder extends ArduinomlBaseListener {
     private Map<String, Actuator> actuators = new HashMap<>();
     private Map<String, State>    states  = new HashMap<>();
     private Map<String, Binding>  bindings  = new HashMap<>();
+
+    private PinAllocator pinAllocator = new PinAllocator();
 
     private State currentState = null;
 
@@ -106,11 +109,10 @@ public class ModelBuilder extends ArduinomlBaseListener {
     public void enterSensor(ArduinomlParser.SensorContext ctx) {
         String sensorName = ctx.location().id.getText();
         validateIdentifier(sensorName);
-        int port = Integer.parseInt(ctx.location().port.getText());
-        validatePort(port);
         Sensor sensor = new Sensor();
         sensor.setName(ctx.location().id.getText());
-        sensor.setPin(Integer.parseInt(ctx.location().port.getText()));
+        int allocatedPin = pinAllocator.allocatePin(sensor);
+        sensor.setPin(allocatedPin);
         this.theApp.getBricks().add(sensor);
         sensors.put(sensor.getName(), sensor);
     }
@@ -119,7 +121,8 @@ public class ModelBuilder extends ArduinomlBaseListener {
     public void enterActuator(ArduinomlParser.ActuatorContext ctx) {
         Actuator actuator = new Actuator();
         actuator.setName(ctx.location().id.getText());
-        actuator.setPin(Integer.parseInt(ctx.location().port.getText()));
+        int allocatedPin = pinAllocator.allocatePin(actuator);
+        actuator.setPin(allocatedPin);
         this.theApp.getBricks().add(actuator);
         actuators.put(actuator.getName(), actuator);
     }

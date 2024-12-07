@@ -23,7 +23,7 @@ We consider here that the current directory is the `antlr` directory.
   2. Then, compile the ANTLR code
     * `mvn clean package`
   3. Run the compiler using the `exec` plugin:
-    * `mvn exec:java -Dexec.args=src/main/resources/state_based_alarm.arduinoml`
+    * `mvn exec:java -Dexec.args=src/main/resources/state_based_alarm_without_pin.arduinoml`
     
 ## Code Description
 
