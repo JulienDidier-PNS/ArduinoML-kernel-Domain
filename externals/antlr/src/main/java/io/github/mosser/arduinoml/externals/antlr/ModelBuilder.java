@@ -115,7 +115,6 @@ public class ModelBuilder extends ArduinomlBaseListener {
         sensors.put(sensor.getName(), sensor);
     }
 
-
     @Override
     public void enterActuator(ArduinomlParser.ActuatorContext ctx) {
         Actuator actuator = new Actuator();
