@@ -17,9 +17,14 @@ bricks          :   (sensor|actuator)+;
 states          :   state+;
     state       :   initial? name=IDENTIFIER '{'  action+ transition '}';
     action      :   receiver=IDENTIFIER '<=' value=SIGNAL;
-    transition  :   conditions '=>' next=IDENTIFIER ;
-    conditions  :   condition ( OPERATOR condition )*;
-    condition   :   receiver=IDENTIFIER 'is' value=SIGNAL;
+    transition  :   condition '=>' next=IDENTIFIER ;
+
+    sensorCondition :   receiver=IDENTIFIER 'is' value=SIGNAL;
+    unaryCondition :   operator=UNARYOPERATOR condition;
+    binaryCondition : '(' left=condition operator=BINARYOPERATOR right=condition ')';
+
+    condition : (sensorCondition | unaryCondition | binaryCondition);
+
     initial     :   '->';
 
 /*****************
@@ -28,8 +33,9 @@ states          :   state+;
 
 IDENTIFIER      :   LOWERCASE (LOWERCASE|UPPERCASE)+;
 SIGNAL          :   'HIGH' | 'LOW';
-OPERATOR        :   'AND' | 'LOW';
+BINARYOPERATOR  :   'AND' | 'OR';
 TYPE            :   'ANALOG' | 'DIGITAL';
+UNARYOPERATOR   :   'NOT';
 
 /*************
  ** Helpers **

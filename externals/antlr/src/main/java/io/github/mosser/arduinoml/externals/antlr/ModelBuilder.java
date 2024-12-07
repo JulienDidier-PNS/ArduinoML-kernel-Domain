@@ -49,6 +49,32 @@ public class ModelBuilder extends ArduinomlBaseListener {
         SIGNAL value;
     }
 
+
+    public static class CompositeCondition extends Condition {
+        private String operator; // "AND", "OR"
+        private Condition leftCondition;
+        private Condition rightCondition;
+
+        public CompositeCondition(String operator, Condition leftCondition, Condition rightCondition) {
+            this.operator = operator;
+            this.leftCondition = leftCondition;
+            this.rightCondition = rightCondition;
+        }
+
+        public String getOperator() {
+            return operator;
+        }
+
+        public Condition getLeftCondition() {
+            return leftCondition;
+        }
+
+        public Condition getRightCondition() {
+            return rightCondition;
+        }
+    }
+
+
     private static class Binding {
         String to; // Nom de l'état suivant
         List<Condition> conditions = new ArrayList<>();
@@ -72,14 +98,19 @@ public class ModelBuilder extends ArduinomlBaseListener {
             if (!states.containsKey(binding.to)) {
                 throw new RuntimeException("Transition in state '" + key + "' points to an undefined state: " + binding.to);
             }
-
             SignalTransition t = new SignalTransition();
-
             for (Condition condition : binding.conditions) {
-                if (condition.trigger == null) {
-                    throw new RuntimeException("Transition in state '" + key + "' uses an undefined sensor.");
+                if (condition instanceof CompositeCondition) {
+                    CompositeCondition composite = (CompositeCondition) condition;
+                    t.addCondition(composite.getLeftCondition().trigger, composite.getLeftCondition().value);
+                    t.addCondition(composite.getRightCondition().trigger, composite.getRightCondition().value);
+                } else {
+                    // Condition simple
+                    if (condition.trigger == null) {
+                        throw new RuntimeException("Transition in state '" + key + "' uses an undefined sensor.");
+                    }
+                    t.addCondition(condition.trigger, condition.value);
                 }
-                t.addCondition(condition.trigger, condition.value);
             }
             t.setNext(states.get(binding.to));
             states.get(key).setTransition(t);
@@ -176,18 +207,67 @@ public class ModelBuilder extends ArduinomlBaseListener {
         toBeResolvedLater.to = ctx.next.getText();
 
         System.out.println("Transition to " + toBeResolvedLater.to);
-        System.out.println("Conditions: " + ctx.conditions().condition().size());
 
-        for (ArduinomlParser.ConditionContext conditionCtx : ctx.conditions().condition()) {
-            String sensorName = conditionCtx.receiver.getText();
-            Sensor sensor = sensors.get(sensorName);
+        // Gérer les conditions dans la transition
+        ArduinomlParser.ConditionContext conditionCtx = ctx.condition();
+        Condition rootCondition = parseCondition(conditionCtx);
+        toBeResolvedLater.conditions.add(rootCondition);
 
-            Condition condition = new Condition();
-            condition.trigger = sensor;
-            condition.value = SIGNAL.valueOf(conditionCtx.value.getText());
-            toBeResolvedLater.conditions.add(condition);
-        }
         bindings.put(currentState.getName(), toBeResolvedLater);
+    }
+
+    private Condition parseCondition(ArduinomlParser.ConditionContext ctx) {
+        if (ctx.sensorCondition() != null) {
+            return parseSensorCondition(ctx.sensorCondition());
+        } else if (ctx.unaryCondition() != null) {
+            return parseUnaryCondition(ctx.unaryCondition());
+        } else if (ctx.binaryCondition() != null) {
+            return parseBinaryCondition(ctx.binaryCondition());
+        }
+        throw new RuntimeException("Unknown condition type in context: " + ctx.getText());
+    }
+
+    private Condition parseSensorCondition(ArduinomlParser.SensorConditionContext ctx) {
+        String sensorName = ctx.receiver.getText();
+        Sensor sensor = sensors.get(sensorName);
+        if (sensor == null) {
+            throw new RuntimeException("Undefined sensor: " + sensorName);
+        }
+        Condition condition = new Condition();
+        condition.trigger = sensor;
+        condition.value = SIGNAL.valueOf(ctx.value.getText());
+        return condition;
+    }
+
+    private Condition parseUnaryCondition(ArduinomlParser.UnaryConditionContext ctx) {
+        String operator = ctx.operator.getText();
+        if ("NOT".equals(operator)) {
+            System.out.println("NOT operator");
+            ArduinomlParser.ConditionContext conditionCtx = ctx.condition();
+            Condition condition = parseCondition(conditionCtx);
+            condition = invertCondition(condition);
+            return condition;
+        }
+        throw new RuntimeException("Unsupported unary operator: " + operator);
+    }
+
+    private Condition invertCondition(Condition condition) {
+        if(condition instanceof CompositeCondition) {
+            ((CompositeCondition) condition).leftCondition = invertCondition(((CompositeCondition) condition).leftCondition);
+            ((CompositeCondition) condition).rightCondition = invertCondition(((CompositeCondition) condition).rightCondition);
+        }
+        else {
+            if (condition.value == SIGNAL.HIGH) {condition.value = SIGNAL.LOW;}
+            else {condition.value = SIGNAL.HIGH;}
+        }
+        return condition;
+    }
+
+    private CompositeCondition parseBinaryCondition(ArduinomlParser.BinaryConditionContext ctx) {
+        String operator = ctx.operator.getText();
+        Condition left = parseCondition(ctx.left);
+        Condition right = parseCondition(ctx.right);
+        return new CompositeCondition(operator, left, right);
     }
 
     @Override

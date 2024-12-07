@@ -7,7 +7,7 @@ actuator led : DIGITAL
 # Declaring states
 on {
     led <= HIGH
-    buttonA is HIGH => off
+    NOT (buttonA is HIGH OR buttonA is LOW)  => off
 }
 
 -> off {

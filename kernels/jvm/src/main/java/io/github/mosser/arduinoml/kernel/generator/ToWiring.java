@@ -139,7 +139,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 					if (conditionLogic.length() > 0) {
 						conditionLogic.append(" && ");
 					}
-					conditionLogic.append(String.format("digitalRead(%d) == %s && %sBounceGuard",
+					conditionLogic.append(String.format("(digitalRead(%d) == %s && %sBounceGuard)",
 							condition.getSensor().getPin(), signalValue, sensorName));
 				}
 
