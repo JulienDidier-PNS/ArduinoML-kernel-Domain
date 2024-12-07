@@ -5,8 +5,11 @@ import io.github.mosser.arduinoml.kernel.generator.Visitable;
 
 public abstract class Brick implements NamedElement, Visitable {
 
+	public enum BrickType { ANALOG, DIGITAL }
+
 	private String name;
-	private int pin = -1;
+	private int pin;
+	private BrickType type;
 
 	public int getPin() {
 		return pin;
@@ -14,6 +17,14 @@ public abstract class Brick implements NamedElement, Visitable {
 
 	public void setPin(int pin) {
 		this.pin = pin;
+	}
+
+	public BrickType getType() {
+		return type;
+	}
+
+	public void setType(BrickType type) {
+		this.type = type;
 	}
 
 	@Override
@@ -25,5 +36,4 @@ public abstract class Brick implements NamedElement, Visitable {
 	public void setName(String name) {
 		this.name = name;
 	}
-
 }

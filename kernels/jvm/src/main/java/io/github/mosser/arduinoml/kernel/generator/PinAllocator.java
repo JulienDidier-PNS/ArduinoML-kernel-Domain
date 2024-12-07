@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PinAllocator {
-    private List<Integer> availableAnalogInputs;
-    private List<Integer> availableDigitalIO;
-    private List<Integer> reservedPins;
+    private final List<Integer> availableAnalogInputs;
+    private final List<Integer> availableDigitalIO;
+    private final List<Integer> reservedPins;
 
     public PinAllocator() {
         // Définir les broches disponibles selon les contraintes matérielles
@@ -20,9 +20,9 @@ public class PinAllocator {
     }
 
     public int allocatePin(Brick brick) {
-        if (brick instanceof Sensor) {
+        if (brick.getType().equals(Brick.BrickType.ANALOG)) {
             return allocateAnalogInput();
-        } else if (brick instanceof Actuator) {
+        } else if (brick.getType().equals(Brick.BrickType.DIGITAL)) {
             return allocateDigitalIO();
         } else {
             throw new IllegalArgumentException("Unknown brick type");

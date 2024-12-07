@@ -8,6 +8,7 @@ import io.github.mosser.arduinoml.kernel.behavioral.SignalTransition;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
 import io.github.mosser.arduinoml.kernel.generator.PinAllocator;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
+import io.github.mosser.arduinoml.kernel.structural.Brick;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
@@ -109,8 +110,14 @@ public class ModelBuilder extends ArduinomlBaseListener {
     public void enterSensor(ArduinomlParser.SensorContext ctx) {
         String sensorName = ctx.location().id.getText();
         validateIdentifier(sensorName);
+
         Sensor sensor = new Sensor();
         sensor.setName(ctx.location().id.getText());
+
+        // Déterminer le type de capteur
+        String type = ctx.location().type.getText().toUpperCase(); // Ajoutez un champ `type` dans la grammaire
+        sensor.setType(Brick.BrickType.valueOf(type));
+
         int allocatedPin = pinAllocator.allocatePin(sensor);
         sensor.setPin(allocatedPin);
         this.theApp.getBricks().add(sensor);
@@ -121,8 +128,14 @@ public class ModelBuilder extends ArduinomlBaseListener {
     public void enterActuator(ArduinomlParser.ActuatorContext ctx) {
         Actuator actuator = new Actuator();
         actuator.setName(ctx.location().id.getText());
+
+        // Déterminer le type d'actionneur
+        String type = ctx.location().type.getText().toUpperCase(); // Ajoutez un champ `type` dans la grammaire
+        actuator.setType(Brick.BrickType.valueOf(type));
+
         int allocatedPin = pinAllocator.allocatePin(actuator);
         actuator.setPin(allocatedPin);
+
         this.theApp.getBricks().add(actuator);
         actuators.put(actuator.getName(), actuator);
     }

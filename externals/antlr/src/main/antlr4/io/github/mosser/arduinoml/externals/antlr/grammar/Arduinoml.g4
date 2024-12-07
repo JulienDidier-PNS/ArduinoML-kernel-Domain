@@ -12,7 +12,7 @@ declaration     :   'application' name=IDENTIFIER;
 bricks          :   (sensor|actuator)+;
     sensor      :   'sensor'   location ;
     actuator    :   'actuator' location ;
-    location    :   id=IDENTIFIER;
+    location    :   id=IDENTIFIER ':' type=TYPE;
 
 states          :   state+;
     state       :   initial? name=IDENTIFIER '{'  action+ transition '}';
@@ -29,6 +29,7 @@ states          :   state+;
 IDENTIFIER      :   LOWERCASE (LOWERCASE|UPPERCASE)+;
 SIGNAL          :   'HIGH' | 'LOW';
 OPERATOR        :   'AND' | 'LOW';
+TYPE            :   'ANALOG' | 'DIGITAL';
 
 /*************
  ** Helpers **
