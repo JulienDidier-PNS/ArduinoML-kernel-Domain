@@ -1,0 +1,17 @@
+application redButton
+
+# Declaring bricks
+sensor buttonA : DIGITAL
+sensor buttonB : DIGITAL
+actuator buzzer : DIGITAL
+
+# Declaring states
+buzz {
+    buzzer <= HIGH
+    (buttonA is HIGH AND buttonB is HIGH)  => off
+}
+
+-> off {
+    buzzer <= LOW
+    (buttonA is HIGH AND buttonB is HIGH) => buzz
+}
