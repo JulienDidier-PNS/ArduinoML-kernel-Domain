@@ -1,6 +1,7 @@
 # ArduinoML
 
   * Author: [Sébastien Mosser](mailto:mosser@i3s.unice.fr?subject=ArduinoML) 
+  * Editor for this branch only : [Julien DIDIER](https://github.com/JulienDidier-PNS)
   * Version: 1.0
   
 This repository is a zoo of implementation of the very same language: ArduinoML. This language is kept simple and naive by essence, the goal of this repository is to store at the same location several implementations of the same concepts. 
@@ -18,12 +19,10 @@ For example, let’s consider the following scenario: _“As a user, considering
 
 ![](https://raw.githubusercontent.com/mosser/ArduinoML-kernel/master/docs/platform_small.png)
 
-## Repository Organization
+## Langage used
 
-  * `docs` contains the documentation that exists on ArduinoML (basically a description of the kernel)
-  * `kernels` contains models and implementations of the abstract syntax of the language.
-  * `embeddeds` defines several alternative implementations of ArduinoML, embedded in host languages 
-  * `externals` defines several alternative implenentations of ArduinoML, as external langauges.
+In this branch, we've put all things about `ANTLR4`.
+You can find more explainations about extensions [here](./externals/antlr/README.md)
 
 ## Contributors
 
