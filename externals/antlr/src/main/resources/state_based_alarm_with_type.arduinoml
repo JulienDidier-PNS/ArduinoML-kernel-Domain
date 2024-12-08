@@ -1,16 +1,19 @@
 application redButton
 
 # Declaring bricks
-sensor buttonA : DIGITAL
 actuator led : DIGITAL
+sensor potar : ANALOG
+actuator motor : ANALOG
 
 # Declaring states
 on {
     led <= HIGH
-    NOT (buttonA is HIGH OR buttonA is LOW)  => off
+    motor <= HIGH
+    potar is LOW  => off
 }
 
 -> off {
     led <= LOW
-    buttonA is HIGH => on
+    motor <= LOW
+    potar is HIGH => on
 }
