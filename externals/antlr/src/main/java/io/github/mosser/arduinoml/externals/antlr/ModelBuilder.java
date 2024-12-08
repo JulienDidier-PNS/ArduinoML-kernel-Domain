@@ -160,8 +160,7 @@ public class ModelBuilder extends ArduinomlBaseListener {
         Actuator actuator = new Actuator();
         actuator.setName(ctx.location().id.getText());
 
-        // Déterminer le type d'actionneur
-        String type = ctx.location().type.getText().toUpperCase(); // Ajoutez un champ `type` dans la grammaire
+        String type = ctx.location().type.getText().toUpperCase();
         actuator.setType(Brick.BrickType.valueOf(type));
 
         int allocatedPin = pinAllocator.allocatePin(actuator);

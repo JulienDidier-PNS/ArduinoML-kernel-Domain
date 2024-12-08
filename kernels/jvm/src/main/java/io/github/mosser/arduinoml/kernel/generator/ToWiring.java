@@ -139,7 +139,7 @@ public class ToWiring extends Visitor<StringBuffer> {
 	public void visit(SignalTransition transition) {
 			if (context.get("pass") == PASS.ONE) {return;}
 			if (context.get("pass") == PASS.TWO) {
-				// Gérer les multiples conditions
+				// Gestion des conditions multiples
 				StringBuilder conditionLogic = new StringBuilder();
 
 				for (SignalTransition.Condition condition : transition.getConditions()) {
