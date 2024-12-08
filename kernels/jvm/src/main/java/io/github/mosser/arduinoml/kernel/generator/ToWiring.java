@@ -30,6 +30,31 @@ public class ToWiring extends Visitor<StringBuffer> {
 		w("// Wiring code generated from an ArduinoML model\n");
 		w(String.format("// Application name: %s\n", app.getName())+"\n");
 
+		//Explaination of PIN allocation
+
+		// Initialisation de l'allocation des broches
+		PinAllocator allocator = new PinAllocator();
+
+		for (Brick brick : app.getBricks()) {
+			if (brick.getPin() == -1) { // Vérifie si aucune broche n'est attribuée
+				int allocatedPin = allocator.allocatePin(brick);
+				brick.setPin(allocatedPin);
+			}
+		}
+
+
+		w("// Pin allocation\n");
+		w("// Analog inputs: A0, A1, A2, A3, A4, A5\n");
+		w("// Analog outputs: 3, 5, 6, 9, 10, 11\n");
+		w("// Digital IO: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13\n\n");
+		for (Brick brick : app.getBricks()) {
+			if(brick instanceof Sensor) {
+				w(String.format("//%s is a %s INPUT allocated on PIN %d\n", brick.getName(),brick.getType(), brick.getPin()));
+			} else if(brick instanceof Actuator) {
+				w(String.format("//%s is an %s OUTPUT allocated on PIN %d\n", brick.getName(),brick.getType(), brick.getPin()));
+			}
+		}
+
 		w("long debounce = 200;\n");
 		w("\nenum STATE {");
 		String sep ="";
@@ -41,16 +66,6 @@ public class ToWiring extends Visitor<StringBuffer> {
 		w("};\n");
 		if (app.getInitial() != null) {
 			w("STATE currentState = " + app.getInitial().getName()+";\n");
-		}
-
-		// Initialisation de l'allocation des broches
-		PinAllocator allocator = new PinAllocator();
-
-		for (Brick brick : app.getBricks()) {
-			if (brick.getPin() == -1) { // Vérifie si aucune broche n'est attribuée
-				int allocatedPin = allocator.allocatePin(brick);
-				brick.setPin(allocatedPin);
-			}
 		}
 
 		for(Brick brick: app.getBricks()){
