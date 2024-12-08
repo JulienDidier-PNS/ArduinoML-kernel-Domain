@@ -3,9 +3,7 @@ package io.github.mosser.arduinoml.externals.antlr;
 import io.github.mosser.arduinoml.externals.antlr.grammar.ArduinomlBaseListener;
 import io.github.mosser.arduinoml.externals.antlr.grammar.ArduinomlParser;
 import io.github.mosser.arduinoml.kernel.App;
-import io.github.mosser.arduinoml.kernel.behavioral.Action;
-import io.github.mosser.arduinoml.kernel.behavioral.SignalTransition;
-import io.github.mosser.arduinoml.kernel.behavioral.State;
+import io.github.mosser.arduinoml.kernel.behavioral.*;
 import io.github.mosser.arduinoml.kernel.generator.PinAllocator;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.Brick;
@@ -44,37 +42,6 @@ public class ModelBuilder extends ArduinomlBaseListener {
 
     private State currentState = null;
 
-    private static class Condition {
-        Sensor trigger;
-        SIGNAL value;
-    }
-
-
-    public static class CompositeCondition extends Condition {
-        private String operator; // "AND", "OR"
-        private Condition leftCondition;
-        private Condition rightCondition;
-
-        public CompositeCondition(String operator, Condition leftCondition, Condition rightCondition) {
-            this.operator = operator;
-            this.leftCondition = leftCondition;
-            this.rightCondition = rightCondition;
-        }
-
-        public String getOperator() {
-            return operator;
-        }
-
-        public Condition getLeftCondition() {
-            return leftCondition;
-        }
-
-        public Condition getRightCondition() {
-            return rightCondition;
-        }
-    }
-
-
     private static class Binding {
         String to; // Nom de l'état suivant
         List<Condition> conditions = new ArrayList<>();
@@ -102,14 +69,10 @@ public class ModelBuilder extends ArduinomlBaseListener {
             for (Condition condition : binding.conditions) {
                 if (condition instanceof CompositeCondition) {
                     CompositeCondition composite = (CompositeCondition) condition;
-                    t.addCondition(composite.getLeftCondition().trigger, composite.getLeftCondition().value);
-                    t.addCondition(composite.getRightCondition().trigger, composite.getRightCondition().value);
-                } else {
-                    // Condition simple
-                    if (condition.trigger == null) {
-                        throw new RuntimeException("Transition in state '" + key + "' uses an undefined sensor.");
-                    }
-                    t.addCondition(condition.trigger, condition.value);
+                    t.addCompositeCondition(composite.getLeft(), composite.getRight(), composite.getOperator());
+                } else if(condition instanceof SimpleCondition) {
+                    SimpleCondition simple = (SimpleCondition) condition;
+                    t.addSimpleCondition(simple.getSensor(), simple.getValue());
                 }
             }
             t.setNext(states.get(binding.to));
@@ -118,6 +81,22 @@ public class ModelBuilder extends ArduinomlBaseListener {
         this.built = true;
     }
 
+    private List<SimpleCondition> computeCompositeCondition(CompositeCondition composite) {
+        List<SimpleCondition> conditions = new ArrayList<>();
+        if (composite.getLeft() instanceof CompositeCondition) {
+            conditions.addAll(computeCompositeCondition((CompositeCondition) composite.getLeft()));
+        }
+        else if(composite.getLeft() instanceof SimpleCondition){
+            conditions.add((SimpleCondition) composite.getLeft());
+        }
+        if (composite.getRight() instanceof CompositeCondition) {
+            conditions.addAll(computeCompositeCondition((CompositeCondition) composite.getRight()));
+        }
+        else if (composite.getRight() instanceof SimpleCondition){
+            conditions.add((SimpleCondition) composite.getRight());
+        }
+        return conditions;
+    }
 
 
     @Override
@@ -210,6 +189,10 @@ public class ModelBuilder extends ArduinomlBaseListener {
         // Gérer les conditions dans la transition
         ArduinomlParser.ConditionContext conditionCtx = ctx.condition();
         Condition rootCondition = parseCondition(conditionCtx);
+        if(rootCondition instanceof CompositeCondition){
+            CompositeCondition composite = (CompositeCondition) rootCondition;
+            System.out.println("Composite condition operator : " + composite.getOperator());
+        }
         toBeResolvedLater.conditions.add(rootCondition);
 
         bindings.put(currentState.getName(), toBeResolvedLater);
@@ -232,11 +215,9 @@ public class ModelBuilder extends ArduinomlBaseListener {
         if (sensor == null) {
             throw new RuntimeException("Undefined sensor: " + sensorName);
         }
-        Condition condition = new Condition();
-        condition.trigger = sensor;
-        condition.value = SIGNAL.valueOf(ctx.value.getText());
-        return condition;
+        return new SimpleCondition(sensor, SIGNAL.valueOf(ctx.value.getText()));
     }
+
 
     private Condition parseUnaryCondition(ArduinomlParser.UnaryConditionContext ctx) {
         String operator = ctx.operator.getText();
@@ -252,22 +233,23 @@ public class ModelBuilder extends ArduinomlBaseListener {
 
     private Condition invertCondition(Condition condition) {
         if(condition instanceof CompositeCondition) {
-            ((CompositeCondition) condition).leftCondition = invertCondition(((CompositeCondition) condition).leftCondition);
-            ((CompositeCondition) condition).rightCondition = invertCondition(((CompositeCondition) condition).rightCondition);
+            ((CompositeCondition) condition).setLeft(invertCondition(((CompositeCondition) condition).getLeft()));
+            ((CompositeCondition) condition).setRight(invertCondition(((CompositeCondition) condition).getRight()));
         }
-        else {
-            if (condition.value == SIGNAL.HIGH) {condition.value = SIGNAL.LOW;}
-            else {condition.value = SIGNAL.HIGH;}
+        else if(condition instanceof SimpleCondition) {
+            if (((SimpleCondition) condition).getValue() == SIGNAL.HIGH) {((SimpleCondition) condition).setValue(SIGNAL.LOW);}
+            else {((SimpleCondition) condition).setValue(SIGNAL.HIGH);}
         }
         return condition;
     }
 
-    private CompositeCondition parseBinaryCondition(ArduinomlParser.BinaryConditionContext ctx) {
-        String operator = ctx.operator.getText();
+    private Condition parseBinaryCondition(ArduinomlParser.BinaryConditionContext ctx) {
+        String operator = ctx.operator.getText(); // "AND" ou "OR"
         Condition left = parseCondition(ctx.left);
         Condition right = parseCondition(ctx.right);
         return new CompositeCondition(operator, left, right);
     }
+
 
     @Override
     public void enterInitial(ArduinomlParser.InitialContext ctx) {

@@ -15,27 +15,14 @@ public class SignalTransition extends Transition {
         return conditions;
     }
 
-    public void addCondition(Sensor sensor, SIGNAL value) {
-        this.conditions.add(new Condition(sensor, value));
+    public void addSimpleCondition(Sensor sensor, SIGNAL value) {
+        this.conditions.add(new SimpleCondition(sensor, value));
     }
 
-    public static class Condition {
-        private Sensor sensor;
-        private SIGNAL value;
-
-        public Condition(Sensor sensor, SIGNAL value) {
-            this.sensor = sensor;
-            this.value = value;
-        }
-
-        public Sensor getSensor() {
-            return sensor;
-        }
-
-        public SIGNAL getValue() {
-            return value;
-        }
+    public void addCompositeCondition(Condition left, Condition right, String operator) {
+        this.conditions.add(new CompositeCondition(operator, left, right));
     }
+
     public SignalTransition() {
     }
 

@@ -7,6 +7,7 @@ import io.github.mosser.arduinoml.kernel.structural.*;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Quick and dirty visitor to support the generation of Wiring code
@@ -137,39 +138,48 @@ public class ToWiring extends Visitor<StringBuffer> {
 
 	@Override
 	public void visit(SignalTransition transition) {
-			if (context.get("pass") == PASS.ONE) {return;}
-			if (context.get("pass") == PASS.TWO) {
-				// Gestion des conditions multiples
-				StringBuilder conditionLogic = new StringBuilder();
+		if (context.get("pass") == PASS.ONE) return;
 
-				for (SignalTransition.Condition condition : transition.getConditions()) {
-					String sensorName = condition.getSensor().getName();
-					String signalValue = condition.getValue().toString();
+		if (context.get("pass") == PASS.TWO) {
+			// Génération de conditions avec support des composites
+			StringBuilder conditionLogic = new StringBuilder();
+			for(Condition condition: transition.getConditions()){
+				conditionLogic.append(generateConditionLogic(condition));
+			}
 
-					// Ajouter le code pour gérer le debounce de chaque capteur
-					w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-							sensorName, sensorName));
-
-					// Construire la logique conditionnelle pour ce capteur
-					if (conditionLogic.length() > 0) {
-						conditionLogic.append(" && ");
-					}
-					conditionLogic.append(String.format("(digitalRead(%d) == %s && %sBounceGuard)",
-							condition.getSensor().getPin(), signalValue, sensorName));
-				}
-
-				// Générer le bloc conditionnel combiné
-				w(String.format("\t\t\tif (%s) {\n", conditionLogic.toString()));
-				for (SignalTransition.Condition condition : transition.getConditions()) {
-					String sensorName = condition.getSensor().getName();
+			// Ajouter les vérifications d'état
+			w(String.format("\t\t\tif (%s) {\n", conditionLogic));
+			for (Condition condition : transition.getConditions()) {
+				if (condition instanceof SimpleCondition) {
+					String sensorName = ((SimpleCondition) condition).getSensor().getName();
 					w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
 				}
-
-				// Transitionner vers l'état suivant
-				w(String.format("\t\t\t\tcurrentState = %s;\n", transition.getNext().getName()));
-				w("\t\t\t}\n");
 			}
+
+			// Transitionner vers l'état suivant
+			w(String.format("\t\t\t\tcurrentState = %s;\n", transition.getNext().getName()));
+			w("\t\t\t}\n");
+		}
 	}
+
+	private String generateConditionLogic(Condition condition) {
+		if (condition instanceof SimpleCondition) {
+			SimpleCondition simple = (SimpleCondition) condition;
+			return String.format("(digitalRead(%d) == %s)",
+					simple.getSensor().getPin(),
+					simple.getValue().toString());
+		} else if (condition instanceof CompositeCondition) {
+			System.out.println("Composite condition");
+			CompositeCondition composite = (CompositeCondition) condition;
+			String leftLogic = generateConditionLogic(composite.getLeft());
+			String rightLogic = generateConditionLogic(composite.getRight());
+			String operator = "&&".equals(composite.getOperator()) ? "&&" : "||";
+			return String.format("(%s %s %s)", leftLogic, operator, rightLogic);
+		}
+		throw new RuntimeException("Unsupported condition type");
+	}
+
+
 
 	@Override
 	public void visit(TimeTransition transition) {
