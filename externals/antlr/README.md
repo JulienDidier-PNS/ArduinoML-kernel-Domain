@@ -60,3 +60,13 @@ We've removed the `pin` keyword from the grammar
 
 ### Kernel
 We added a new class `PinAllocator` in the kernel module. In order to use it, at the visit beggining of the model, we allocate the pins to the components.
+
+### PIN Allocation
+According to this sheme, here is the pin allocation for the different components:
+![Pin Allocation](../../docs/arduino_uno.png)
+
+| Type de Broche	 | Numéros des broches                             |
+|-----------------|-------------------------------------------------|
+| Analog IN       | 	A0(14), A1(15), A2(16), A3(17), A4(18), A5(19) |
+| Digital IN/OUT  | 	0 - 13                                         |
+| PWM (Analog OUT)	| 3, 5, 6, 9, 10, 11                              |
